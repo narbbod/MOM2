@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categoría: Damas</title>
+    <!-- Incluye Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define una fuente bonita para el título */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif; /* Aplica la fuente Inter al cuerpo para el texto general */
+            background-color: #f8f8f8; /* Un fondo muy claro para un look limpio */
+            display: flex;
+            flex-direction: column; /* Organiza los elementos en columna */
+            align-items: center; /* Centra el contenido horizontalmente */
+            min-height: 100vh; /* Asegura que ocupe al menos toda la altura de la ventana */
+            padding-top: 5rem; /* Espacio para la barra de navegación fija */
+        }
+        /* Estilo específico para el título 'PROJECT MOM' con la nueva tipografía itálica */
+        .title-font {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+        /* Animación para toda la página al cargar */
+        body.fadeIn {
+            opacity: 0;
+            animation: fadeIn 0.8s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        /* Animación para toda la página al salir (para enlaces) */
+        body.fadeOut {
+            animation: fadeOut 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* --- Estilos de la Modal de Producto --- */
+        .product-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden; /* Oculto por defecto */
+            opacity: 0;
+            transition: visibility 0.3s, opacity 0.3s ease-in-out;
+        }
+
+        .product-modal-overlay.open {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .product-modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            max-width: 90%; /* Ajuste para móvil */
+            max-height: 90%; /* Ajuste para móvil */
+            overflow-y: auto; /* Para scroll si el contenido es muy largo */
+            transform: scale(0.9); /* Inicia un poco encogido */
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .product-modal-overlay.open .product-modal-content {
+            transform: scale(1); /* Se expande a tamaño normal */
+        }
+
+        .modal-close-button {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4a5568; /* gray-700 */
+            transition: color 0.2s;
+        }
+
+        .modal-close-button:hover {
+            color: #2d3748; /* gray-800 */
+        }
+
+        /* Responsive adjustments for modal content */
+        @media (min-width: 640px) { /* sm breakpoint */
+            .product-modal-content {
+                flex-direction: row;
+                max-width: 700px; /* Ancho máximo en desktop */
+                padding: 2rem;
+            }
+        }
+        /* Estilos para el menú desplegable (desktop) */
+        .menu-dropdown-desktop { /* Renombrado para evitar conflicto con mobile */
+            display: none;
+            position: absolute;
+            background-color: #ffffff;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            right: 0; /* Align to the right of the parent */
+            top: 100%; /* Position below the parent */
+            margin-top: 0.5rem;
+        }
+
+        .menu-dropdown-desktop-open { /* Renombrado para evitar conflicto con mobile */
+            display: block;
+        }
+
+        .menu-dropdown-desktop a, .menu-dropdown-desktop span { /* Renombrado */
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+        }
+
+        .menu-dropdown-desktop a:hover { /* Renombrado */
+            background-color: #f1f1f1;
+            color: #8B5CF6; /* Tailwind purple-500 */
+        }
+
+        .dropdown-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Estilo para el enlace de la categoría actual */
+        .current-category-link {
+            color: #a0a0a0; /* Gris claro para indicar que está deshabilitado */
+            cursor: default;
+            pointer-events: none; /* Hace que el enlace no sea clicable */
+            background-color: #f8f8f8; /* Un fondo ligeramente diferente */
+        }
+
+        /* Asegurarse de que el menú de categorías esté visible solo en desktop */
+        @media (max-width: 639px) { /* sm breakpoint */
+            #categoriesMenuItemDesktop {
+                display: none;
+            }
+        }
+        /* Asegurarse de que el menú móvil no se vea en desktop */
+        @media (min-width: 640px) { /* sm breakpoint */
+            #mobileMenuButton {
+                display: none;
+            }
+            #mobileMenu {
+                display: none;
+            }
+        }
+
+        /* Estilos para el menú móvil */
+        #mobileMenu {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 70%; /* Ancho del menú móvil */
+            max-width: 300px; /* Ancho máximo para pantallas más grandes */
+            height: 100%;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            z-index: 1001; /* Mayor que la modal de producto */
+            transform: translateX(100%); /* Oculto por defecto */
+            transition: transform 0.3s ease-in-out;
+            padding-top: 5rem; /* Espacio para la barra de navegación */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #mobileMenu.open {
+            transform: translateX(0); /* Muestra el menú */
+        }
+
+        #mobileMenu a, #mobileMenu span {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            color: #333;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+        }
+
+        #mobileMenu a:hover {
+            background-color: #f5f5f5;
+            color: #8B5CF6;
+        }
+
+        #mobileCategoriesDropdown {
+            padding-left: 1.5rem; /* Indentación para sub-opciones */
+            border-top: 1px solid #eee;
+        }
+        #mobileCategoriesDropdown a, #mobileCategoriesDropdown span {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9em;
+        }
+
+        /* Estilos del carrito de compras */
+        .cart-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.3s, opacity 0.3s ease-in-out;
+        }
+
+        .cart-modal-overlay.open {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .cart-modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .cart-modal-overlay.open .cart-modal-content {
+            transform: scale(1);
+        }
+
+        .cart-close-button {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4a5568;
+            transition: color 0.2s;
+        }
+
+        .cart-close-button:hover {
+            color: #2d3748;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+</head>
+<body class="antialiased fadeIn">
+    <nav class="w-full bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-50">
+        <!-- Título "PROJECT MOM" (ya no es un enlace) -->
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight tracking-tight">
+            <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 title-font">
+                PROJECT MOM
+            </span>
+        </h1>
+
+        <div class="flex items-center space-x-4">
+            <!-- Botón de carrito para móviles -->
+            <button id="cartButtonMobile" class="relative sm:hidden text-gray-600 hover:text-purple-600 focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <span id="cartCountMobile" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+            </button>
+            <!-- Botón de menú hamburguesa para móviles -->
+            <button id="mobileMenuButton" class="sm:hidden text-gray-600 hover:text-purple-600 focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+
+            <!-- Menú de categorías para desktop -->
+            <div class="dropdown-container hidden sm:block">
+                <a href="#" id="categoriesMenuItemDesktop" class="text-gray-700 hover:text-purple-600 font-semibold no-underline flex items-center">
+                    Categorías
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </a>
+                <div id="categoriesDropdownDesktop" class="menu-dropdown-desktop">
+                    <a href="level2.html" class="menu-item-link">Niños</a>
+                    <a href="level3.html" class="menu-item-link">Caballeros</a>
+                    <span class="block px-4 py-2 text-gray-400 cursor-default current-category-link">Damas</span>
+                    <a href="level5.html" class="menu-item-link">Accesorios</a>
+                </div>
+            </div>
+
+            <!-- Botón de volver al menú principal para desktop -->
+            <a href="index.html" class="hidden sm:inline-block text-gray-600 hover:text-purple-600 font-semibold no-underline text-sm sm:text-base transition duration-300 transform hover:scale-105 px-2 py-1 rounded-md">
+                &larr; Volver al Menú
+            </a>
+
+            <!-- Botón de carrito para desktop -->
+            <button id="cartButtonDesktop" class="relative hidden sm:flex items-center text-gray-700 hover:text-purple-600 font-semibold no-underline">
+                <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Carrito
+                <span id="cartCountDesktop" class="ml-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Menú móvil (oculto por defecto) -->
+    <div id="mobileMenu" class="mobile-menu">
+        <button id="closeMobileMenuButton" class="absolute top-4 right-4 text-gray-600 hover:text-purple-600 focus:outline-none">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+        <a href="#" id="mobileCategoriesMenuItem" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex justify-between items-center">
+            Categorías
+            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </a>
+        <div id="mobileCategoriesDropdown" class="hidden">
+            <a href="level2.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 menu-item-link">Niños</a>
+            <a href="level3.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 menu-item-link">Caballeros</a>
+            <span class="block px-4 py-2 text-gray-400 cursor-default current-category-link">Damas</span>
+            <a href="level5.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 menu-item-link">Accesorios</a>
+        </div>
+        <a href="index.html" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 menu-item-link">Volver al Menú</a>
+    </div>
+
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl mt-8">
+        <main class="text-gray-500 text-center">
+            <h2 class="text-4xl font-extrabold text-gray-900 mb-8">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-red-500">
+                    Productos para Damas
+                </span>
+            </h2>
+
+            <p class="text-lg text-gray-700 mb-12">
+                ¡Descubre nuestra exclusiva colección para damas!
+            </p>
+
+            <!-- Cuadrícula de productos para Damas -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+                <!-- Producto 1 para Damas -->
+                <div id="womenProduct1" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/FFC0CB/FF69B4?text=Vestido+Elegante" alt="Vestido Elegante" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Vestido Elegante</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct1">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct1">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Producto 2 para Damas -->
+                <div id="womenProduct2" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/E0BBE4/957DAD?text=Bolso+Mano" alt="Bolso de Mano" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Bolso de Mano</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct2">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct2">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Producto 3 para Damas -->
+                <div id="womenProduct3" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/957DAD/D291BC?text=Pendientes" alt="Pendientes Brillantes" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Pendientes Brillantes</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct3">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct3">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Producto 4 para Damas -->
+                <div id="womenProduct4" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/C8A2C8/8F48A9?text=Zapatillas" alt="Zapatillas Deportivas" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Zapatillas Deportivas</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct4">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct4">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Producto 5 para Damas -->
+                <div id="womenProduct5" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/F8BBD0/E91E63?text=Bufanda+Seda" alt="Bufanda de Seda" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Bufanda de Seda</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct5">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct5">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Producto 6 para Damas -->
+                <div id="womenProduct6" class="bg-white rounded-lg shadow-sm p-3 flex flex-col items-center cursor-pointer no-underline text-gray-800 hover:shadow-md transition">
+                    <img src="https://placehold.co/200x250/DDA0DD/BA55D3?text=Abrigo+Invierno" alt="Abrigo de Invierno" class="w-full h-auto rounded-md mb-2 object-cover">
+                    <h3 class="text-sm font-semibold">Abrigo de Invierno</h3>
+                    <div class="flex flex-col gap-2 w-full mt-2">
+                        <a href="#" target="_blank" class="buy-now-btn-grid inline-block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs no-underline text-center"
+                            data-product-id="womenProduct6">
+                            Comprar Ahora
+                        </a>
+                        <button class="add-to-cart-btn-grid inline-block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-2 rounded-full shadow-md transition duration-300 transform hover:scale-105 text-xs"
+                            data-product-id="womenProduct6">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-12 sm:mt-16 text-gray-500 text-xs sm:text-sm">
+            <p>&copy; 2023 PROJECT MOM. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <!-- Modal de Producto -->
+    <div id="productModalOverlay" class="product-modal-overlay">
+        <div id="productModalContent" class="product-modal-content">
+            <button id="closeModalBtn" class="modal-close-button">&times;</button>
+            <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full">
+                <div class="sm:w-1/2 flex justify-center">
+                    <img id="modalProductImage" src="" alt="Producto en Modal" class="w-full max-w-[250px] h-auto rounded-lg shadow-md object-cover">
+                </div>
+                <div class="sm:w-1/2 text-center sm:text-left">
+                    <h2 id="modalProductName" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                    <p id="modalProductPrice" class="text-xl font-bold text-purple-600 mb-3"></p>
+                    <p id="modalProductDescription" class="text-gray-700 text-sm leading-relaxed mb-4"></p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <a id="modalBuyNowBtn" href="#" target="_blank" class="inline-block w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 no-underline text-base text-center">
+                            Comprar Ahora
+                        </a>
+                        <button id="modalAddToCartBtn" class="inline-block w-full sm:w-auto bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-base">
+                            Añadir al Carrito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal del Carrito de Compras -->
+    <div id="cartModalOverlay" class="cart-modal-overlay">
+        <div id="cartModalContent" class="cart-modal-content w-11/12 md:w-1/2 lg:w-1/3">
+            <button id="closeCartModalBtn" class="cart-close-button">&times;</button>
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Tu Carrito de Compras</h2>
+            <div id="cartItemsContainer" class="mb-4">
+                <!-- Los artículos del carrito se añadirán aquí dinámicamente -->
+            </div>
+            <p class="text-lg font-bold text-gray-900 mb-4">Total: <span id="cartTotalPrice">$0.00</span></p>
+            <button id="checkoutBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-lg">
+                Proceder al Pago
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lógica para la animación de entrada al cargar la página
+            document.body.classList.add('fadeIn');
+
+            // DECLARACIONES DE ELEMENTOS DOM RELACIONADOS CON LAS MODALES
+            const productModalOverlay = document.getElementById('productModalOverlay');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const modalProductImage = document.getElementById('modalProductImage');
+            const modalProductName = document.getElementById('modalProductName');
+            const modalProductPrice = document.getElementById('modalProductPrice');
+            const modalProductDescription = document.getElementById('modalProductDescription');
+            const modalBuyNowBtn = document.getElementById('modalBuyNowBtn');
+            const modalAddToCartBtn = document.getElementById('modalAddToCartBtn'); // Nuevo botón de añadir al carrito de la modal
+
+            // Elementos del menú (desktop)
+            const categoriesMenuItemDesktop = document.getElementById('categoriesMenuItemDesktop');
+            const categoriesDropdownDesktop = document.getElementById('categoriesDropdownDesktop');
+
+            // Elementos del menú móvil
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const closeMobileMenuButton = document.getElementById('closeMobileMenuButton');
+            const mobileCategoriesMenuItem = document.getElementById('mobileCategoriesMenuItem');
+            const mobileCategoriesDropdown = document.getElementById('mobileCategoriesDropdown');
+
+            // Carrito de compras elementos
+            const cartButtonDesktop = document.getElementById('cartButtonDesktop');
+            const cartButtonMobile = document.getElementById('cartButtonMobile');
+            const cartCountDesktop = document.getElementById('cartCountDesktop');
+            const cartCountMobile = document.getElementById('cartCountMobile');
+            const cartModalOverlay = document.getElementById('cartModalOverlay');
+            const closeCartModalBtn = document.getElementById('closeCartModalBtn');
+            const cartItemsContainer = document.getElementById('cartItemsContainer');
+            const cartTotalPriceElem = document.getElementById('cartTotalPrice');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+
+            let cart = JSON.parse(localStorage.getItem('cart')) || []; // Cargar carrito de localStorage
+
+
+            // Datos de los productos de la categoría Damas (Añadiendo IDs únicos)
+            const womenProductDetails = {
+                "womenProduct1": {
+                    id: "women1",
+                    name: "Vestido Elegante",
+                    price: 89.99,
+                    description: "Un vestido perfecto para cualquier ocasión especial, con un diseño sofisticado y tela de alta calidad.",
+                    image: "https://placehold.co/400x500/FFC0CB/FF69B4?text=Vestido+Elegante"
+                },
+                "womenProduct2": {
+                    id: "women2",
+                    name: "Bolso de Mano",
+                    price: 65.00,
+                    description: "Bolso de mano de cuero sintético con un diseño moderno y compartimentos prácticos para el día a día.",
+                    image: "https://placehold.co/400x500/E0BBE4/957DAD?text=Bolso+Mano"
+                },
+                "womenProduct3": {
+                    id: "women3",
+                    name: "Pendientes Brillantes",
+                    price: 29.50,
+                    description: "Pendientes con incrustaciones de cristal que añadirán un toque de brillo a cualquier atuendo. Ideal para regalo.",
+                    image: "https://placehold.co/400x500/957DAD/D291BC?text=Pendientes"
+                },
+                "womenProduct4": {
+                    id: "women4",
+                    name: "Zapatillas Deportivas",
+                    price: 75.00,
+                    description: "Zapatillas deportivas cómodas y a la moda, perfectas para el ejercicio o para un estilo casual urbano.",
+                    image: "https://placehold.co/400x500/C8A2C8/8F48A9?text=Zapatillas"
+                },
+                "womenProduct5": {
+                    id: "women5",
+                    name: "Bufanda de Seda",
+                    price: 39.00,
+                    description: "Bufanda de seda suave y ligera con estampados exclusivos, ideal para complementar tu estilo en cualquier temporada.",
+                    image: "https://placehold.co/400x500/F8BBD0/E91E63?text=Bufanda+Seda"
+                },
+                "womenProduct6": {
+                    id: "women6",
+                    name: "Abrigo de Invierno",
+                    price: 150.00,
+                    description: "Abrigo cálido y elegante, diseñado para mantenerte cómoda y a la moda durante los meses más fríos del año.",
+                    image: "https://placehold.co/400x500/DDA0DD/BA55D3?text=Abrigo+Invierno"
+                }
+            };
+
+            // FUNCIONES DE MODAL DE PRODUCTO
+            function updateWhatsAppLink(product) {
+                const message = `¡Hola! Me gustaría comprar el "${product.name}" por $${product.price.toFixed(2)}.`;
+                const whatsappNumber = '573024640777';
+                return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+            }
+
+            function openProductModal(productDetails) {
+                modalProductImage.src = productDetails.image;
+                modalProductImage.alt = productDetails.name;
+                modalProductName.textContent = productDetails.name;
+                modalProductPrice.textContent = `$${productDetails.price.toFixed(2)}`;
+                modalProductDescription.textContent = productDetails.description;
+
+                modalBuyNowBtn.href = updateWhatsAppLink(productDetails);
+                modalAddToCartBtn.dataset.productId = productDetails.id; // Asigna el ID para añadir al carrito
+                modalAddToCartBtn.dataset.productName = productDetails.name;
+                modalAddToCartBtn.dataset.productPrice = productDetails.price;
+                modalAddToCartBtn.dataset.productImage = productDetails.image;
+
+                productModalOverlay.classList.add('open');
+                if (mobileMenu) mobileMenu.classList.remove('open'); // Cerrar menú móvil si está abierto
+                if (cartModalOverlay) cartModalOverlay.classList.remove('open'); // Cerrar carrito si está abierto
+            }
+
+            function closeProductModal() {
+                productModalOverlay.classList.remove('open');
+            }
+
+            // FUNCIONES DEL CARRITO
+            function updateCartCount() {
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+                cartCountDesktop.textContent = totalItems;
+                cartCountMobile.textContent = totalItems;
+            }
+
+            function saveCart() {
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartCount();
+            }
+
+            function addToCart(product, quantity = 1) {
+                const existingItemIndex = cart.findIndex(item => item.id === product.id && item.style === product.style);
+
+                if (existingItemIndex > -1) {
+                    cart[existingItemIndex].quantity += quantity;
+                } else {
+                    cart.push({ ...product, quantity });
+                }
+                saveCart();
+                renderCartItems(); // Actualizar la vista del carrito si está abierta
+            }
+
+            function removeFromCart(productId, productStyle = null) {
+                cart = cart.filter(item => !(item.id === productId && (productStyle === null || item.style === productStyle)));
+                saveCart();
+                renderCartItems();
+            }
+
+            function renderCartItems() {
+                cartItemsContainer.innerHTML = '';
+                let totalPrice = 0;
+
+                if (cart.length === 0) {
+                    cartItemsContainer.innerHTML = '<p class="text-gray-600">El carrito está vacío.</p>';
+                    checkoutBtn.disabled = true;
+                    checkoutBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    cart.forEach(item => {
+                        const itemTotal = item.price * item.quantity;
+                        totalPrice += itemTotal;
+
+                        const cartItemDiv = document.createElement('div');
+                        cartItemDiv.classList.add('cart-item');
+                        cartItemDiv.innerHTML = `
+                            <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-md mr-4">
+                            <div class="flex-grow">
+                                <h3 class="text-md font-semibold text-gray-800">${item.name} ${item.style ? `- ${item.style}` : ''}</h3>
+                                <p class="text-sm text-gray-600">Cantidad: ${item.quantity}</p>
+                                <p class="text-sm font-bold text-purple-600">$${item.price.toFixed(2)} c/u</p>
+                            </div>
+                            <button class="remove-from-cart-btn bg-red-500 hover:bg-red-600 text-white p-1 rounded-full text-xs"
+                                data-product-id="${item.id}"
+                                data-product-style="${item.style || ''}">
+                                &times;
+                            </button>
+                        `;
+                        cartItemsContainer.appendChild(cartItemDiv);
+                    });
+                }
+
+                cartTotalPriceElem.textContent = `$${totalPrice.toFixed(2)}`;
+
+                // Añadir listeners para los botones de eliminar después de renderizar
+                document.querySelectorAll('.remove-from-cart-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const productId = event.target.dataset.productId;
+                        const productStyle = event.target.dataset.productStyle;
+                        removeFromCart(productId, productStyle === '' ? null : productStyle);
+                    });
+                });
+            }
+
+            function openCartModal() {
+                renderCartItems();
+                cartModalOverlay.classList.add('open');
+                if (mobileMenu) mobileMenu.classList.remove('open'); // Cerrar menú móvil si está abierto
+                if (productModalOverlay) productModalOverlay.classList.remove('open'); // Cerrar modal de producto si está abierta
+            }
+
+            function closeCartModal() {
+                cartModalOverlay.classList.remove('open');
+            }
+
+            function checkout() {
+                if (cart.length === 0) {
+                    console.log("El carrito está vacío. Añade productos antes de proceder al pago.");
+                    return;
+                }
+
+                let whatsappMessage = "¡Hola! Me gustaría hacer un pedido con los siguientes artículos:\n\n";
+                let totalOrderPrice = 0;
+
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    whatsappMessage += `- ${item.name} ${item.style ? `(${item.style})` : ''} x ${item.quantity} = $${itemTotal.toFixed(2)}\n`;
+                    totalOrderPrice += itemTotal;
+                });
+
+                whatsappMessage += `\nTotal del pedido: $${totalOrderPrice.toFixed(2)}.`;
+
+                const whatsappNumber = '573024640777';
+                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+                window.open(whatsappUrl, '_blank');
+                cart = []; // Vaciar el carrito después de proceder al pago
+                saveCart();
+                closeCartModal();
+            }
+
+            // EVENT LISTENERS
+
+            // Lógica para abrir/cerrar el dropdown de categorías en desktop
+            if (categoriesMenuItemDesktop) {
+                categoriesMenuItemDesktop.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    categoriesDropdownDesktop.classList.toggle('menu-dropdown-desktop-open');
+                    // Cerrar menú móvil si está abierto
+                    if (mobileMenu) mobileMenu.classList.remove('open');
+                    // Cerrar modal de producto si está abierta
+                    if (productModalOverlay) productModalOverlay.classList.remove('open');
+                    // Cerrar carrito si está abierto
+                    if (cartModalOverlay) cartModalOverlay.classList.remove('open');
+                });
+            }
+
+            // Lógica para el botón de menú hamburguesa (móvil)
+            if (mobileMenuButton) {
+                mobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('open');
+                    // Cerrar otras modales si están abiertas
+                    if (productModalOverlay) productModalOverlay.classList.remove('open');
+                    if (cartModalOverlay) cartModalOverlay.classList.remove('open');
+                });
+            }
+
+            // Lógica para cerrar el menú móvil con la 'X'
+            if (closeMobileMenuButton) {
+                closeMobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.remove('open');
+                });
+            }
+
+            // Lógica para el dropdown de categorías en el menú móvil
+            if (mobileCategoriesMenuItem) {
+                mobileCategoriesMenuItem.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    mobileCategoriesDropdown.classList.toggle('hidden');
+                });
+            }
+
+            // Asignar listeners a cada producto de la sección "Productos para Damas" para abrir la modal
+            const womenProductDivs = document.querySelectorAll('.grid > div[id^="womenProduct"]');
+            womenProductDivs.forEach(productDiv => {
+                productDiv.addEventListener('click', (event) => {
+                    // Solo abrir la modal si no se hizo clic en un botón de acción
+                    if (!event.target.closest('.buy-now-btn-grid') && !event.target.closest('.add-to-cart-btn-grid')) {
+                        const productId = productDiv.id;
+                        if (womenProductDetails[productId]) {
+                            openProductModal(womenProductDetails[productId]);
+                        }
+                    }
+                });
+            });
+
+            // Listeners para los botones "Comprar Ahora" en la cuadrícula
+            document.querySelectorAll('.buy-now-btn-grid').forEach(button => {
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    const productId = this.dataset.productId;
+                    if (womenProductDetails[productId]) {
+                        window.open(updateWhatsAppLink(womenProductDetails[productId]), '_blank');
+                    }
+                });
+            });
+
+            // Listeners para los botones "Añadir al Carrito" en la cuadrícula
+            document.querySelectorAll('.add-to-cart-btn-grid').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    if (womenProductDetails[productId]) {
+                        addToCart({
+                            id: womenProductDetails[productId].id,
+                            name: womenProductDetails[productId].name,
+                            price: womenProductDetails[productId].price,
+                            image: womenProductDetails[productId].image,
+                            style: null // No hay estilo específico para estos productos
+                        });
+                    }
+                });
+            });
+
+            // Listener para añadir al carrito (modal de producto)
+            modalAddToCartBtn.addEventListener('click', (event) => {
+                const productId = event.target.dataset.productId;
+                const productName = event.target.dataset.productName;
+                const productPrice = parseFloat(event.target.dataset.productPrice);
+                const productImage = event.target.dataset.productImage;
+
+                addToCart({
+                    id: productId,
+                    name: productName,
+                    price: productPrice,
+                    image: productImage,
+                    style: null // No hay estilo específico para productos de la modal en esta página
+                });
+                closeProductModal();
+            });
+
+            // Listener para cerrar la modal de producto al hacer clic en la "X" o fuera de ella
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', closeProductModal);
+            }
+            if (productModalOverlay) {
+                productModalOverlay.addEventListener('click', function(event) {
+                    if (event.target === productModalOverlay) {
+                        closeProductModal();
+                    }
+                });
+            }
+
+            // Listener para abrir el carrito (desktop y mobile)
+            cartButtonDesktop.addEventListener('click', openCartModal);
+            cartButtonMobile.addEventListener('click', openCartModal);
+
+            // Listener para cerrar el carrito
+            closeCartModalBtn.addEventListener('click', closeCartModal);
+            cartModalOverlay.addEventListener('click', function(event) {
+                if (event.target === cartModalOverlay) {
+                    closeCartModal();
+                }
+            });
+
+            // Listener para el botón "Proceder al Pago"
+            checkoutBtn.addEventListener('click', checkout);
+
+            // Cerrar dropdowns o modales si se hace clic fuera
+            document.addEventListener('click', function(event) {
+                // Cerrar dropdown de categorías desktop si está abierto y se hace clic fuera
+                if (categoriesDropdownDesktop && !categoriesDropdownDesktop.contains(event.target) && categoriesMenuItemDesktop && !categoriesMenuItemDesktop.contains(event.target)) {
+                    categoriesDropdownDesktop.classList.remove('menu-dropdown-desktop-open');
+                }
+                 // Cerrar menú móvil si está abierto y se hace clic fuera
+                if (mobileMenu && !mobileMenu.contains(event.target) && mobileMenuButton && !mobileMenuButton.contains(event.target)) {
+                    mobileMenu.classList.remove('open');
+                }
+                 // Cerrar modal de producto si se hace clic fuera (asegurarse de no cerrarla al hacer clic en los productos de la cuadrícula)
+                if (productModalOverlay && !productModalOverlay.contains(event.target) && !event.target.closest('.grid > div')) {
+                    productModalOverlay.classList.remove('open');
+                }
+                // Cerrar modal del carrito si se hace clic fuera
+                if (cartModalOverlay && !cartModalOverlay.contains(event.target) && !cartButtonDesktop.contains(event.target) && !cartButtonMobile.contains(event.target)) {
+                    closeCartModal();
+                }
+            });
+
+            // Lógica para la animación de salida al hacer clic en enlaces
+            const allNavLinks = document.querySelectorAll('a');
+            allNavLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    // Evitar que los enlaces de menú (categorías/volver al menú) disparen el fadeOut inmediato
+                    if (this.href && this.href !== window.location.href + '#' && this.href !== '#' &&
+                        !this.classList.contains('menu-item-link')) {
+                        event.preventDefault();
+                        document.body.classList.add('fadeOut');
+                        const targetUrl = this.href;
+                        setTimeout(() => {
+                            window.location.href = targetUrl;
+                        }, 500);
+                    }
+                });
+            });
+
+            updateCartCount(); // Actualizar el contador del carrito al cargar la página
+        });
+    </script>
+</body>
+</html>
